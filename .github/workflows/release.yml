@@ -6,7 +6,7 @@ on:
       - master
 
 env:
-  DOCKER_IMAGE_NAME: mergeability/mergeable
+  DOCKER_IMAGE_NAME: ch4s3r/mergeable
 
 jobs:
   build:
