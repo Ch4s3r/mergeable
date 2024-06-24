@@ -17,8 +17,6 @@ module.exports = (robot, { getRouter }) => {
       router.use(prometheusMiddleware())
     }
   }
-
-
   logger.init(robot.log)
   const mergeable = new Mergeable(process.env.NODE_ENV)
   mergeable.start(robot)
