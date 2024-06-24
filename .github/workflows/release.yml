@@ -21,4 +21,4 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
       - uses: buildpacks/github-actions/setup-pack@v5.7.2
       - name: Build and publish docker image
-        run: pack build ch4s3r/mergeable:${{ steps.semantic.outputs.new_release_version }} --publish
+        run: pack build ch4s3r/mergeable:${{ steps.semantic.outputs.new_release_version }} -B paketobuildpacks/builder-jammy-base --publish
