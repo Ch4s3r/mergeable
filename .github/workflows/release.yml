@@ -36,4 +36,3 @@ jobs:
               -B paketobuildpacks/builder-jammy-tiny \
               -b docker.io/paketobuildpacks/nodejs \
               --publish
-
