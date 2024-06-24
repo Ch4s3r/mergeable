@@ -14,7 +14,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Semantic Release
+        id: semantic
         uses: cycjimmy/semantic-release-action@v4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - uses: buildpacks/github-actions/setup-pack@v5
+      - name: Build and publish docker image
+        run: pack build ch4s3r/mergeable:${{ steps.semantic.outputs.new_release_version }} --publish
