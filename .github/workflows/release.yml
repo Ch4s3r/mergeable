@@ -1,31 +1,38 @@
-name: Release
-
 on:
   push:
     branches:
-      - master
-  workflow_dispatch:
-
+      - main
+name: release-please
 jobs:
-  build:
-    name: Release
+  release-please:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Semantic Release
-        id: semantic
-        uses: cycjimmy/semantic-release-action@v4
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          release-type: node
+      - uses: actions/checkout@v4
+        if: ${{ steps.release.outputs.release_created }}
+      - uses: actions/setup-node@v4
+        if: ${{ steps.release.outputs.release_created }}
+      - run: npm ci
+        if: ${{ steps.release.outputs.release_created }}
+      - run: npm publish
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
+        if: ${{ steps.release.outputs.release_created }}
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+        if: ${{ steps.release.outputs.release_created }}
       - uses: buildpacks/github-actions/setup-pack@v5.7.2
-        if: steps.semantic.outputs.new_release_published
+        if: ${{ steps.release.outputs.release_created }}
       - name: Build and publish docker image
-        if: steps.semantic.outputs.new_release_published
-        run: pack build ch4s3r/mergeable:${{ steps.semantic.outputs.new_release_version }} -B paketobuildpacks/builder-jammy-base --publish
+        if: ${{ steps.release.outputs.release_created }}
+        run: pack build \
+              ch4s3r/mergeable:${{ steps.release.outputs.tag_name }} \
+              -B paketobuildpacks/builder-jammy-tiny \
+              -b docker.io/paketobuildpacks/nodejs \
+              --publish
