@@ -25,5 +25,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - uses: buildpacks/github-actions/setup-pack@v5.7.2
+        if: steps.semantic.outputs.new_release_published
       - name: Build and publish docker image
+        if: steps.semantic.outputs.new_release_published
         run: pack build ch4s3r/mergeable:${{ steps.semantic.outputs.new_release_version }} -B paketobuildpacks/builder-jammy-base --publish
