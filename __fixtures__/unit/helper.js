@@ -1,6 +1,5 @@
 const _ = require('lodash')
 const yaml = require('js-yaml')
-const moment = require('moment-timezone')
 
 const throwNotFound = () => {
   const error = new Error('404 error')
@@ -18,10 +17,13 @@ module.exports = {
         action: 'opened',
         repository: {
           name: (options.repoName) ? options.repoName : 'repoName',
-          full_name: 'name',
+          full_name: 'fullRepoName',
           owner: {
             login: 'owner'
           }
+        },
+        sender: {
+          login: 'initiator'
         },
         check_suite: {
           pull_requests: [
@@ -37,8 +39,8 @@ module.exports = {
           title: (options.title) ? options.title : 'title',
           body: options.body,
           number: (options.number) ? options.number : 1,
-          created_at: options.createdAt ? moment(options.createdAt) : moment(),
-          updated_at: options.updatedAt ? moment(options.updatedAt) : moment(),
+          created_at: (options.createdAt) ? options.createdAt : new Date().toISOString(),
+          updated_at: (options.updatedAt) ? options.updatedAt : new Date().toISOString(),
           milestone: (options.milestone) ? options.milestone : null,
           requested_reviewers: options.requestedReviewers ? options.requestedReviewers : [],
           requested_teams: options.requestedTeams ? options.requestedTeams : [],
@@ -64,8 +66,16 @@ module.exports = {
           user: {
             login: 'creator'
           },
-          number: (options.number) ? options.number : 1
-        }
+          title: (options.title) ? options.title : 'title',
+          body: options.body,
+          number: (options.number) ? options.number : 1,
+          milestone: (options.milestone) ? options.milestone : null,
+          created_at: (options.createdAt) ? options.createdAt : new Date().toISOString(),
+          updated_at: (options.updatedAt) ? options.updatedAt : new Date().toISOString(),
+          assignees: (options.assignees) ? options.assignees : [],
+          pull_request: {}
+        },
+        comment: options.issueComment
       },
       log: {
         child: (s) => {
@@ -182,7 +192,7 @@ module.exports = {
           },
           requestReviewers: jest.fn().mockReturnValue(options.requestReviewers || 'request review success'),
           merge: jest.fn().mockReturnValue(options.merge || 'merged'),
-          get: jest.fn()
+          get: jest.fn().mockReturnValue({ data: { head: { ref: 'test', sha: 'sha1' } } })
         },
         paginate: jest.fn(async (fn, cb) => {
           return fn.then(cb)
@@ -207,8 +217,10 @@ module.exports = {
               resolve({ status: 204 })
             })
           },
-          listComments: () => {
-            return { data: (options.listComments) ? options.listComments : [] }
+          listComments: {
+            endpoint: {
+              merge: () => Promise.resolve({ data: (options.comments) ? options.comments : [] })
+            }
           },
           createComment: jest.fn().mockReturnValue(options.createComment || 'createComment call success'),
           deleteComment: jest.fn().mockReturnValue(options.deleteComment || 'deleteComment call success'),
@@ -253,5 +265,10 @@ module.exports = {
     context.probotContext.config = () => {
       return Promise.resolve(yaml.safeLoad(configString))
     }
+  },
+
+  flushPromises: () => {
+    // https://stackoverflow.com/questions/49405338/jest-test-promise-resolution-and-event-loop-tick
+    return new Promise(resolve => setImmediate(resolve))
   }
 }
