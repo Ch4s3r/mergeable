@@ -11,7 +11,6 @@ module.exports = (robot, { getRouter }) => {
       // endpoint to fetch github given installation rate limit
       router.get('/github-ratelimit/:installationId', githubRateLimitEndpoint(robot))
     }
-
     if (process.env.ENABLE_METRICS_ENDPOINT === 'true') {
       // expose prometheus metrics
       router.use(prometheusMiddleware())
