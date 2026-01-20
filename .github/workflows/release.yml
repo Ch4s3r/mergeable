@@ -27,7 +27,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
         if: ${{ steps.semantic.outputs.new_release_version }}
-      - uses: buildpacks/github-actions/setup-pack@v5.7.2
+      - uses: buildpacks/github-actions/setup-pack@v5.10.1
         if: ${{ steps.semantic.outputs.new_release_version }}
       - name: Build and publish docker image
         if: ${{ steps.semantic.outputs.new_release_version }}
