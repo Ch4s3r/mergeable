@@ -658,6 +658,8 @@ test('returns proper error when team provided is not found', async () => {
     }
   }
 
+  Teams.extractTeamMemberships = jest.fn().mockReturnValue(['userB'])
+
   const validation = await approval.processValidate(createMockContext(5, reviewList, null, null, false), settings, [])
   expect(validation.validations.length).toBe(2)
   expect(validation.validations[1].description).toBe('approval: userA required')
@@ -698,7 +700,7 @@ describe('required.owners ', () => {
       }
     }
 
-    Teams.extractTeamMembers = jest.fn().mockReturnValue(['userB'])
+    Teams.extractTeamMemberships = jest.fn().mockReturnValue(['userB'])
 
     const validation = await approval.processValidate(createMockContext(5, reviewList, null, null, false), settings)
     expect(validation.validations.length).toBe(2)
@@ -823,6 +825,98 @@ describe('required.owners ', () => {
     expect(validation.status).toBe('pass')
     expect(validation.validations[0].status).toBe('info')
     expect(validation.validations[0].description).toBe('Only approvals from following sources are counted')
+  })
+
+  test('limit.owners passes when CODEOWNERS file is missing', async () => {
+    const approval = new Approval()
+
+    const reviewList = [
+      {
+        user: {
+          login: 'userA'
+        },
+        state: 'APPROVED',
+        submitted_at: Date.now()
+      }
+    ]
+
+    const settings = {
+      do: 'approval',
+      limit: {
+        owners: true
+      },
+      min: {
+        count: 1
+      }
+    }
+
+    Owners.process = jest.fn().mockReturnValue([])
+    Teams.extractTeamMemberships = jest.fn().mockReturnValue([])
+    const validation = await approval.processValidate(createMockContext(5, reviewList, null, null, false), settings)
+
+    expect(validation.status).toBe('pass')
+    expect(validation.validations[0].description).toBe('Only approvals from following sources are counted')
+    expect(validation.validations[1].description).toBe("approval does have a minimum of '1'")
+  })
+
+  test('limit.owners passes when codeowner approved and teams are empty', async () => {
+    const approval = new Approval()
+
+    const reviewList = [
+      {
+        user: {
+          login: 'userA'
+        },
+        state: 'APPROVED',
+        submitted_at: Date.now()
+      }
+    ]
+
+    const settings = {
+      do: 'approval',
+      limit: {
+        owners: true
+      },
+      min: {
+        count: 1
+      }
+    }
+
+    Owners.process = jest.fn().mockReturnValue(['userA'])
+    Teams.extractTeamMemberships = jest.fn().mockReturnValue([])
+    const validation = await approval.processValidate(createMockContext(5, reviewList, null, null, false), settings)
+
+    expect(validation.status).toBe('pass')
+    expect(validation.validations[0].description).toBe('Only approvals from following sources are counted')
+    expect(validation.validations[1].description).toBe("approval does have a minimum of '1'")
+  })
+
+  test('required.owners passes when CODEOWNERS file is missing and other reviewers have approved', async () => {
+    const approval = new Approval()
+
+    const reviewList = [
+      {
+        user: {
+          login: 'userA'
+        },
+        state: 'APPROVED',
+        submitted_at: Date.now()
+      }
+    ]
+
+    const settings = {
+      do: 'approval',
+      required: {
+        owners: true,
+        reviewers: ['userA']
+      }
+    }
+
+    Owners.process = jest.fn().mockReturnValue([])
+    const validation = await approval.processValidate(createMockContext(5, reviewList, null, null, false), settings)
+
+    expect(validation.status).toBe('pass')
+    expect(validation.validations[0].description).toBe('approval: all required reviewers have approved')
   })
 })
 
