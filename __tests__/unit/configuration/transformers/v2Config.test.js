@@ -13,7 +13,7 @@ test('pass, fail, error defaults will load when pull_request event is specified.
             regex: 'wip|work in progress'
             message: 'This PR is work in progress.'
   `
-  const transformed = V2Config.transform(yaml.safeLoad(config))
+  const transformed = V2Config.transform(yaml.load(config))
 
   expect(transformed.mergeable[0].pass).toEqual(constants.DEFAULT_PR_PASS)
   expect(transformed.mergeable[0].fail).toEqual(constants.DEFAULT_PR_FAIL)
@@ -40,7 +40,7 @@ test('pass, fail, error defaults will load when pull_request event is specified 
             text: some text
     `
 
-  let transformed = V2Config.transform(yaml.safeLoad(config))
+  let transformed = V2Config.transform(yaml.load(config))
   expect(transformed.mergeable[0].pass[0].payload.title).toBe('a title')
   expect(transformed.mergeable[0].fail).toEqual(constants.DEFAULT_PR_FAIL)
   expect(transformed.mergeable[0].error).toEqual(constants.DEFAULT_PR_ERROR)
@@ -54,7 +54,7 @@ test('pass, fail, error defaults will load when pull_request event is specified 
           payload:
             title: a failed title
   `
-  transformed = V2Config.transform(yaml.safeLoad(config))
+  transformed = V2Config.transform(yaml.load(config))
   expect(transformed.mergeable[0].pass[0].payload.title).toBe('a title')
   expect(transformed.mergeable[0].fail[0].payload.title).toBe('a failed title')
   expect(transformed.mergeable[0].error).toEqual(constants.DEFAULT_PR_ERROR)
@@ -68,7 +68,7 @@ test('pass, fail, error defaults will load when pull_request event is specified 
           payload:
             title: an errored title
   `
-  transformed = V2Config.transform(yaml.safeLoad(config))
+  transformed = V2Config.transform(yaml.load(config))
   expect(transformed.mergeable[0].pass[0].payload.title).toBe('a title')
   expect(transformed.mergeable[0].fail[0].payload.title).toBe('a failed title')
   expect(transformed.mergeable[0].error[0].payload.title).toBe('an errored title')
@@ -85,7 +85,7 @@ test('pass, fail, error defaults will load when pull_request is mixed with other
             regex: 'wip|work in progress'
             message: 'This PR is work in progress.'
   `
-  const transformed = V2Config.transform(yaml.safeLoad(config))
+  const transformed = V2Config.transform(yaml.load(config))
 
   expect(transformed.mergeable[0].pass).toEqual(constants.DEFAULT_PR_PASS)
   expect(transformed.mergeable[0].fail).toEqual(constants.DEFAULT_PR_FAIL)
@@ -102,7 +102,7 @@ test('pass, fail, error defaults will load when issue_comment event is specified
           must_exclude:
             regex: 'wip|work in progress'
   `
-  const transformed = V2Config.transform(yaml.safeLoad(config))
+  const transformed = V2Config.transform(yaml.load(config))
 
   expect(transformed.mergeable[0].pass).toEqual(constants.DEFAULT_PR_PASS)
   expect(transformed.mergeable[0].fail).toEqual(constants.DEFAULT_PR_FAIL)
@@ -121,7 +121,7 @@ test('pass, fail, error defaults will load when pull_request_review event is spe
               must_exclude:
                 regex: 'changes_requested'
   `
-  const transformed = V2Config.transform(yaml.safeLoad(config))
+  const transformed = V2Config.transform(yaml.load(config))
 
   expect(transformed.mergeable[0].pass).toEqual(constants.DEFAULT_PR_PASS)
   expect(transformed.mergeable[0].fail).toEqual(constants.DEFAULT_PR_FAIL)
@@ -139,7 +139,7 @@ test('only pass, fail defaults ignore recipes that are not for pull_requests', (
             regex: 'wip|work in progress'
             message: 'This PR is work in progress.'
   `
-  const transformed = V2Config.transform(yaml.safeLoad(config))
+  const transformed = V2Config.transform(yaml.load(config))
 
   expect(transformed.mergeable[0].pass).toEqual([])
   expect(transformed.mergeable[0].fail).toEqual([])
@@ -162,7 +162,7 @@ test('default checks fill in missing required fields', () => {
             summary: 'test Summary'
             text: 'test text'
   `
-  const transformed = V2Config.transform(yaml.safeLoad(config))
+  const transformed = V2Config.transform(yaml.load(config))
 
   expect(transformed.mergeable[0].pass).toEqual([{
     do: 'checks',
@@ -190,7 +190,7 @@ test('adding default only works for checks', () => {
           payload:
             body: 'test Body'
   `
-  const transformed = V2Config.transform(yaml.safeLoad(config))
+  const transformed = V2Config.transform(yaml.load(config))
 
   expect(transformed.mergeable[0].fail).toEqual([{
     do: 'comment',
@@ -215,7 +215,7 @@ test('defaults are not added to all cases if no checks exists', () => {
           payload:
             body: 'test Body'
   `
-  const transformed = V2Config.transform(yaml.safeLoad(config))
+  const transformed = V2Config.transform(yaml.load(config))
 
   expect(transformed.mergeable[0].pass).toEqual([])
   expect(transformed.mergeable[0].error).toEqual([])
@@ -236,7 +236,7 @@ test('defaults are not added to all cases if at least one checks exists', () => 
           payload:
             body: 'test Body'
   `
-  const transformed = V2Config.transform(yaml.safeLoad(config))
+  const transformed = V2Config.transform(yaml.load(config))
 
   expect(transformed.mergeable[0].pass).toEqual(constants.DEFAULT_PR_PASS)
   expect(transformed.mergeable[0].fail[0].payload.body).toEqual('test Body')

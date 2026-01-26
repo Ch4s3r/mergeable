@@ -26,7 +26,7 @@ describe('Loading bad configuration', () => {
   })
 
   test('wrong version', () => {
-    const settings = yaml.safeLoad(`
+    const settings = yaml.load(`
       version: not a number
       mergeable:
         pull_request:
@@ -37,7 +37,7 @@ describe('Loading bad configuration', () => {
   })
 
   test('missing mergeable node', () => {
-    const settings = yaml.safeLoad(`
+    const settings = yaml.load(`
       version: 2
     `)
     const config = new Configuration(settings)
@@ -46,7 +46,7 @@ describe('Loading bad configuration', () => {
   })
 
   test('missing rule sets', () => {
-    const settings = yaml.safeLoad(`
+    const settings = yaml.load(`
       version: 2
       mergeable:
     `)
@@ -55,7 +55,7 @@ describe('Loading bad configuration', () => {
     expect(config.errors.has(Configuration.ERROR_CODES.MISSING_RULE_SETS)).toBe(true)
   })
   test('v2: non array rule set', () => {
-    const settings = yaml.safeLoad(`
+    const settings = yaml.load(`
       version: 2
       mergeable:
         when: test
@@ -67,7 +67,7 @@ describe('Loading bad configuration', () => {
   })
 
   test('v2: missing/typo in "validate" keyword multiple rule sets', () => {
-    let settings = yaml.safeLoad(`
+    let settings = yaml.load(`
       version: 2
       mergeable:
         - when: pull_requests.*
@@ -80,7 +80,7 @@ describe('Loading bad configuration', () => {
     expect(config.errors.size).toBe(1)
     expect(config.errors.has(Configuration.ERROR_CODES.MISSING_VALIDATE_KEYWORD)).toBe(true)
 
-    settings = yaml.safeLoad(`
+    settings = yaml.load(`
       version: 2
       mergeable:
         - when: pull_requests.*
@@ -91,7 +91,7 @@ describe('Loading bad configuration', () => {
   })
 
   test('v2: non-array "validate" node', () => {
-    let settings = yaml.safeLoad(`
+    let settings = yaml.load(`
       version: 2
       mergeable:
         - when: pull_requests.*
@@ -101,7 +101,7 @@ describe('Loading bad configuration', () => {
     expect(config.errors.size).toBe(1)
     expect(config.errors.has(Configuration.ERROR_CODES.NON_ARRAY_VALIDATE)).toBe(true)
 
-    settings = yaml.safeLoad(`
+    settings = yaml.load(`
       version: 2
       mergeable:
         - when: pull_requests.*
@@ -114,7 +114,7 @@ describe('Loading bad configuration', () => {
   })
 
   test('v2: missing/typo in "when" keyword rule sets', () => {
-    const settings = yaml.safeLoad(`
+    const settings = yaml.load(`
       version: 2
       mergeable:
         - validate:
@@ -126,7 +126,7 @@ describe('Loading bad configuration', () => {
   })
 
   test('multiple errors', () => {
-    const settings = yaml.safeLoad(`
+    const settings = yaml.load(`
       version: foo
       mergeably:
         when: bar
@@ -153,7 +153,7 @@ describe('config file fetching', () => {
                 days: 20
                 message: PR test
         `
-    const parsedConfig = yaml.safeLoad(configString)
+    const parsedConfig = yaml.load(configString)
     const context = createMockGhConfig(configString)
     const config = await Configuration.fetchConfigFile(context)
     expect(config).toEqual(parsedConfig)
@@ -171,21 +171,18 @@ describe('config file fetching', () => {
                 days: 20
                 message: PR test
         `
-    const parsedConfig = yaml.safeLoad(configString)
+    const parsedConfig = yaml.load(configString)
     const context = createMockGhConfig(configString)
     context.globalSettings.use_config_cache = true
     const configCache = Configuration.getCache()
     const repo = context.repo()
-    let keys = await configCache.keys()
     // checking that the cache is empty before the call
-    expect(keys.length).toEqual(0)
+    expect(await configCache.get(`${repo.owner}/${repo.repo}`)).toBeUndefined()
     expect(context.probotContext.config.mock.calls.length).toEqual(0)
     const config = await Configuration.fetchConfigFile(context)
     expect(context.probotContext.config.mock.calls.length).toEqual(1)
     expect(config).toEqual(parsedConfig)
-    keys = await configCache.keys()
     // checking that the cache is warmed up
-    expect(keys.length).toEqual(1)
     expect(await configCache.get(`${repo.owner}/${repo.repo}`)).toEqual(parsedConfig)
     // checking that we are only fetching it once, even though we call it twice
     const cachedConfig = await Configuration.fetchConfigFile(context)
@@ -207,7 +204,7 @@ describe('config file fetching', () => {
         `
     // intialize context with empty config
     const emptyConfig = '{}'
-    const parsedConfig = yaml.safeLoad(configString)
+    const parsedConfig = yaml.load(configString)
     const context = createMockGhConfig(emptyConfig)
     context.globalSettings.use_config_cache = true
     const configCache = Configuration.getCache()
@@ -233,20 +230,20 @@ describe('config file fetching', () => {
         `
     // intialize context with empty config
     const emptyConfig = '{}'
-    const parsedConfig = yaml.safeLoad(configString)
+    const parsedConfig = yaml.load(configString)
     const context = createMockGhConfig(emptyConfig)
     context.globalSettings.use_config_cache = true
     const configCache = Configuration.getCache()
     const repo = context.repo()
-    configCache.set(`${repo.owner}/${repo.repo}`, parsedConfig)
+    await configCache.set(`${repo.owner}/${repo.repo}`, parsedConfig)
     context.eventName = 'push'
     context.payload.head_commit = { added: ['.github/mergeable.yml'] }
     expect(context.probotContext.config.mock.calls.length).toEqual(0)
     const config = await Configuration.fetchConfigFile(context)
     expect(context.probotContext.config.mock.calls.length).toEqual(1)
     expect(config).toEqual({})
-    const keys = await configCache.keys()
-    expect(keys.length).toEqual(1)
+    // After push, cache should be refreshed with the new (empty) config
+    expect(await configCache.get(`${repo.owner}/${repo.repo}`)).toEqual({})
   })
 
   test('check config cache for org invalidated on push events', async () => {
@@ -263,30 +260,34 @@ describe('config file fetching', () => {
         `
     // intialize context with empty config
     const emptyConfig = '{}'
-    const parsedConfig = yaml.safeLoad(configString)
+    const parsedConfig = yaml.load(configString)
     const context = createMockGhConfig(emptyConfig)
     context.globalSettings.use_config_cache = true
     const configCache = Configuration.getCache()
     const repo = context.repo()
-    configCache.set(`${repo.owner}/${repo.repo}`, parsedConfig)
-    configCache.set(`${repo.owner}/another-repo`, parsedConfig)
-    configCache.set(`${repo.owner}/yet-another-repo`, parsedConfig)
-    let keys = await configCache.keys()
-    expect(keys.length).toEqual(3)
+    await configCache.set(`${repo.owner}/${repo.repo}`, parsedConfig)
+    await configCache.set(`${repo.owner}/another-repo`, parsedConfig)
+    await configCache.set(`${repo.owner}/yet-another-repo`, parsedConfig)
+    // Verify all three cache entries exist
+    expect(await configCache.get(`${repo.owner}/${repo.repo}`)).toEqual(parsedConfig)
+    expect(await configCache.get(`${repo.owner}/another-repo`)).toEqual(parsedConfig)
+    expect(await configCache.get(`${repo.owner}/yet-another-repo`)).toEqual(parsedConfig)
     context.eventName = 'push'
     context.payload.head_commit = { added: ['.github/mergeable.yml'] }
     expect(context.probotContext.config.mock.calls.length).toEqual(0)
     let config = await Configuration.fetchConfigFile(context)
     expect(context.probotContext.config.mock.calls.length).toEqual(1)
     expect(config).toEqual({})
-    keys = await configCache.keys()
-    expect(keys.length).toEqual(3)
+    // After push to repo, only that repo's cache should be updated
+    expect(await configCache.get(`${repo.owner}/${repo.repo}`)).toEqual({})
+    expect(await configCache.get(`${repo.owner}/another-repo`)).toEqual(parsedConfig)
+    expect(await configCache.get(`${repo.owner}/yet-another-repo`)).toEqual(parsedConfig)
     context.repo = jest.fn().mockReturnValue({ owner: repo.owner, repo: '.github' })
     config = await Configuration.fetchConfigFile(context)
     expect(context.probotContext.config.mock.calls.length).toEqual(2)
     expect(config).toEqual({})
-    keys = await configCache.keys()
-    expect(keys.length).toEqual(1)
+    // After push to .github (org config), all org caches should be cleared
+    expect(await configCache.get(`${repo.owner}/.github`)).toEqual({})
   })
 
   test('fetch from main branch if the event is PR relevant and file is not modified or added', async () => {
@@ -308,7 +309,7 @@ describe('config file fetching', () => {
                 days: 20
                 message: Issue test
         `
-    const parsedConfig = yaml.safeLoad(configString)
+    const parsedConfig = yaml.load(configString)
 
     const context = createMockGhConfig(
       configString,
@@ -344,7 +345,7 @@ describe('config file fetching', () => {
                 days: 20
                 message: Issue test
         `
-    const parsedConfig = yaml.safeLoad(configString)
+    const parsedConfig = yaml.load(configString)
 
     const context = createMockGhConfig(
       configString,
@@ -380,7 +381,7 @@ describe('config file fetching', () => {
                 days: 20
                 message: From PR Config
         `
-    const parsedConfig = yaml.safeLoad(prConfigString)
+    const parsedConfig = yaml.load(prConfigString)
     let files = {
       files: [
         { filename: '.github/mergeable.yml', status: 'modified' }
@@ -425,7 +426,7 @@ describe('config file fetching', () => {
                 days: 20
                 message: From PR Config
         `
-    const parsedConfig = yaml.safeLoad(prConfigString)
+    const parsedConfig = yaml.load(prConfigString)
     let files = {
       files: [
         { filename: '.github/mergeable.yml', status: 'modified' }
@@ -455,7 +456,7 @@ describe('config file fetching', () => {
 
 describe('with version 2', () => {
   test('it loads correctly without version', () => {
-    const configJson = yaml.safeLoad(`
+    const configJson = yaml.load(`
       mergeable:
         approvals: 5
         label: 'label regex'
@@ -471,7 +472,7 @@ describe('with version 2', () => {
 describe('with version 1', () => {
   // write test to test for bad yml
   test('that constructor loads settings correctly', () => {
-    const configJson = yaml.safeLoad(`
+    const configJson = yaml.load(`
       mergeable:
         approvals: 5
         label: 'label regex'
@@ -487,7 +488,7 @@ describe('with version 1', () => {
   })
 
   test('that defaults are not injected when user defined configuration exists', () => {
-    const configJson = yaml.safeLoad(`
+    const configJson = yaml.load(`
       mergeable:
         approvals: 1
       `)
@@ -505,7 +506,7 @@ describe('with version 1', () => {
         label: 'label regex'
         title: 'title regex'
     `)
-    context.probotContext.config = jest.fn().mockResolvedValue(yaml.safeLoad(`
+    context.probotContext.config = jest.fn().mockResolvedValue(yaml.load(`
       mergeable:
         approvals: 5
         label: 'label regex'
@@ -674,7 +675,7 @@ describe('with version 1', () => {
   })
 
   test('that if pass, fail or error is undefined in v2 config, the config will not break', async () => {
-    const settings = yaml.safeLoad(`
+    const settings = yaml.load(`
       mergeable:
         issues:
           stale:
@@ -717,11 +718,11 @@ describe('with version 1', () => {
 
     context.globalSettings.use_config_from_pull_request = false
     config = await Configuration.fetchConfigFile(context)
-    expect(config).toEqual(yaml.safeLoad(configString))
+    expect(config).toEqual(yaml.load(configString))
 
     context.globalSettings.use_config_from_pull_request = true
     config = await Configuration.fetchConfigFile(context)
-    expect(config).toEqual(yaml.safeLoad(prConfigString))
+    expect(config).toEqual(yaml.load(prConfigString))
   })
 
   test('that env USE_ORG_AS_DEFAULT_CONFIG correctly use org-wide config', async () => {
@@ -776,10 +777,10 @@ const createMockGhConfig = (config, prConfig, options) => {
   }
   context.probotContext.config = jest.fn().mockImplementation((fileName, defaultConfig, deepMergeOptions) => {
     if (defaultConfig) {
-      const configs = [yaml.safeLoad(config), defaultConfig]
+      const configs = [yaml.load(config), defaultConfig]
       return deepmerge.all(configs, deepMergeOptions)
     }
-    return yaml.safeLoad(config)
+    return yaml.load(config)
   })
 
   context.globalSettings = {

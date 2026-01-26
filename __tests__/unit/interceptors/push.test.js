@@ -75,7 +75,7 @@ describe('push interceptor test', () => {
 const mockContextWithConfig = (config, list) => {
   const context = Helper.mockContext({ prList: list })
   context.probotContext = {
-    config: jest.fn().mockResolvedValue(yaml.safeLoad(config))
+    config: jest.fn().mockResolvedValue(yaml.load(config))
   }
 
   return context

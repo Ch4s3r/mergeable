@@ -101,10 +101,10 @@ module.exports = {
               if (path === '.github/CODEOWNERS') {
                 return options.codeowners
                   ? resolve({
-                      data: {
-                        content: options.codeowners
-                      }
-                    })
+                    data: {
+                      content: options.codeowners
+                    }
+                  })
                   : throwNotFound()
               }
             })
@@ -263,7 +263,7 @@ module.exports = {
       })
     }
     context.probotContext.config = () => {
-      return Promise.resolve(yaml.safeLoad(configString))
+      return Promise.resolve(yaml.load(configString))
     }
   },
 

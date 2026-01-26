@@ -3,7 +3,7 @@ const yaml = require('js-yaml')
 
 describe('Description no empty scenarios transformations', () => {
   const verify = (config) => {
-    const res = v1Config.transform(yaml.safeLoad(config))
+    const res = v1Config.transform(yaml.load(config))
     const dv = res.mergeable[0].validate[0]
 
     expect(res.mergeable[0].when).toBeDefined()
@@ -66,7 +66,7 @@ describe('Stale scenarios', () => {
     ${moreConfig}
     `
 
-    const res = v1Config.transform(yaml.safeLoad(config))
+    const res = v1Config.transform(yaml.load(config))
     const whenSchedule = res.mergeable.filter(recipe => recipe.when === 'schedule.repository')
     expect(whenSchedule.length).toBe(expectedLength)
     return whenSchedule
@@ -119,7 +119,7 @@ test('check that proper format is returned, including default pass, fail and err
     pull_requests:
       title: 'wip'
   `
-  const res = v1Config.transform(yaml.safeLoad(config))
+  const res = v1Config.transform(yaml.load(config))
   expect(res.mergeable[0].when).toBeDefined()
   expect(res.mergeable[0].pass).toBeDefined()
   expect(res.mergeable[0].fail).toBeDefined()
@@ -132,7 +132,7 @@ test('checks that the content is tranformed correctly', async () => {
     pull_requests:
       title: 'wip'
   `
-  const res = v1Config.transform(yaml.safeLoad(config))
+  const res = v1Config.transform(yaml.load(config))
   const validate = res.mergeable[0].validate
 
   expect(validate[0].do).toBe('title')
@@ -167,7 +167,7 @@ test('check all the simple config is transformed accurately', async () => {
         # Regular expression to be tested on the title. Not mergeable when true.
         title: 'wip'
   `
-  const res = v1Config.transform(yaml.safeLoad(config))
+  const res = v1Config.transform(yaml.load(config))
   const validate = res.mergeable
   expect(validate.length).toBe(3)
   const issues = (validate.filter(item => item.when.includes('issues')))[0].validate
@@ -248,7 +248,7 @@ test('checks all advanced config is transformed accurately', async () => {
           regex: 'jibberish'
           message: 'Custom message...'
    `
-  const res = v1Config.transform(yaml.safeLoad(config))
+  const res = v1Config.transform(yaml.load(config))
   const events = res.mergeable
 
   expect(events.length).toBe(5)
@@ -311,7 +311,7 @@ test('check that and/or logic is transformed correctly', async () => {
             regex: 'release note: no'
             message: 'Please include release note: no'
   `
-  const res = v1Config.transform(yaml.safeLoad(config))
+  const res = v1Config.transform(yaml.load(config))
   const validate = res.mergeable
   expect(validate.length).toBe(2)
   const pr = (validate.filter(item => item.when.includes('pull_request')))[0].validate

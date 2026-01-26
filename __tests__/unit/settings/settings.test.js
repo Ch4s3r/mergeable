@@ -16,7 +16,7 @@ describe('Loading bad settings', () => {
   })
 
   test('No YML', async () => {
-    const parsedSettings = yaml.safeLoad(`
+    const parsedSettings = yaml.load(`
         config_path: ""
         use_config_cache: false
         use_org_as_default_config: false
@@ -37,7 +37,7 @@ describe('Loading bad settings', () => {
   })
 
   test('wrong version', () => {
-    const yamlContent = yaml.safeLoad(`
+    const yamlContent = yaml.load(`
       version: not a number
       mergeable:
         config_path: ""
@@ -51,7 +51,7 @@ describe('Loading bad settings', () => {
   })
 
   test('missing mergeable node', () => {
-    const yamlContent = yaml.safeLoad(`
+    const yamlContent = yaml.load(`
       version: 1
     `)
     const settings = new Settings(yamlContent)
@@ -60,7 +60,7 @@ describe('Loading bad settings', () => {
   })
 
   test('missing rule sets', () => {
-    const yamlContent = yaml.safeLoad(`
+    const yamlContent = yaml.load(`
       version: 1
       mergeable:
     `)
@@ -84,7 +84,7 @@ describe('settings file fetching', () => {
             use_config_from_pull_request: true
         `
 
-    const parsedSettings = yaml.safeLoad(settingsString)
+    const parsedSettings = yaml.load(settingsString)
     const context = createMockGhSettings(settingsString)
     const settings = await Settings.fetchSettingsFile(context)
     expect(settings).toEqual(parsedSettings)
@@ -99,22 +99,19 @@ describe('settings file fetching', () => {
             use_config_from_pull_request: true
         `
 
-    const parsedSettings = yaml.safeLoad(settingsString)
+    const parsedSettings = yaml.load(settingsString)
     const context = createMockGhSettings(settingsString)
-    process.env.USE_SETTINGS_CACHE = true
+    process.env.USE_SETTINGS_CACHE = 'true'
 
     const settingsCache = Settings.getCache()
     const repo = context.repo()
     // checking that the cache is empty before the call
-    let keys = await settingsCache.keys()
-    expect(keys.length).toEqual(0)
+    expect(await settingsCache.get(`${repo.owner}/${repo.repo}/settings`)).toBeUndefined()
     expect(context.octokit.repos.getContent.mock.calls.length).toEqual(0)
     const settings = await Settings.fetchSettingsFile(context)
     expect(context.octokit.repos.getContent.mock.calls.length).toEqual(1)
     expect(settings).toEqual(parsedSettings)
     // checking that the cache is warmed up
-    keys = await settingsCache.keys()
-    expect(keys.length).toEqual(1)
     expect(await settingsCache.get(`${repo.owner}/${repo.repo}/settings`)).toEqual(parsedSettings)
     // checking that we are only fetching it once, even though we call it twice
     const cachedSettings = await Settings.fetchSettingsFile(context)
@@ -131,13 +128,13 @@ describe('settings file fetching', () => {
             use_config_from_pull_request: true
         `
     // intialize context with empty config
-    const parsedSettings = yaml.safeLoad(settingsString)
+    const parsedSettings = yaml.load(settingsString)
     const context = createMockGhSettings(settingsString)
-    process.env.USE_SETTINGS_CACHE = true
+    process.env.USE_SETTINGS_CACHE = 'true'
 
     const settingsCache = Settings.getCache()
     const repo = context.repo()
-    settingsCache.set(`${repo.owner}/${repo.repo}/settings`, parsedSettings)
+    await settingsCache.set(`${repo.owner}/${repo.repo}/settings`, parsedSettings)
     expect(context.octokit.repos.getContent.mock.calls.length).toEqual(0)
     const settings = await Settings.fetchSettingsFile(context)
     expect(context.octokit.repos.getContent.mock.calls.length).toEqual(0)
@@ -156,20 +153,20 @@ describe('settings file fetching', () => {
 
     // intialize context with empty config
     const emptyConfig = '{}'
-    const parsedSettings = yaml.safeLoad(settingsString)
+    const parsedSettings = yaml.load(settingsString)
     const context = createMockGhSettings(emptyConfig)
-    process.env.USE_SETTINGS_CACHE = true
+    process.env.USE_SETTINGS_CACHE = 'true'
     const settingsCache = Settings.getCache()
     const repo = context.repo()
-    settingsCache.set(`${repo.owner}/${repo.repo}/settings`, parsedSettings)
+    await settingsCache.set(`${repo.owner}/${repo.repo}/settings`, parsedSettings)
     context.event = 'push'
     context.payload.head_commit = { added: ['.github/mergeable.settings.yml'] }
     expect(context.octokit.repos.getContent.mock.calls.length).toEqual(0)
     const settings = await Settings.fetchSettingsFile(context)
     expect(context.octokit.repos.getContent.mock.calls.length).toEqual(1)
     expect(settings).toEqual(parsedSettings)
-    const keys = await settingsCache.keys()
-    expect(keys.length).toEqual(1)
+    // After push, cache should be refreshed
+    expect(await settingsCache.get(`${repo.owner}/${repo.repo}/settings`)).toEqual(parsedSettings)
   })
 })
 

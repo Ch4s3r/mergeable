@@ -9,7 +9,7 @@ test.each([
   'schedule'
 ])('check that close is called for %s events', async (eventName) => {
   const close = new Close()
-  const context = Helper.mockContext({ eventName: eventName })
+  const context = Helper.mockContext({ eventName })
   const schedulerResult = {
     validationSuites: [{
       schedule: {

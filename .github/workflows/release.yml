@@ -1,9 +1,9 @@
 name: Release
 
 on:
-  push:
-    branches:
-      - master
+    push:
+      branches:
+        - master
 
 env:
   DOCKER_IMAGE_NAME: ch4s3r/mergeable
@@ -31,4 +31,10 @@ jobs:
         if: ${{ steps.semantic.outputs.new_release_version }}
       - name: Build and publish docker image
         if: ${{ steps.semantic.outputs.new_release_version }}
-        run: pack build ${{ env.DOCKER_IMAGE_NAME }} -t ${{ env.DOCKER_IMAGE_NAME }}:${{ steps.semantic.outputs.new_release_version }} -t ${{ env.DOCKER_IMAGE_NAME }}:latest -B paketobuildpacks/ubuntu-noble-builder-buildpackless -b docker.io/paketobuildpacks/nodejs --publish
+        run: pack build \
+              ${{ env.DOCKER_IMAGE_NAME }} \
+              -t ${{ env.DOCKER_IMAGE_NAME }}:${{ steps.semantic.outputs.new_release_version }} \
+              -t ${{ env.DOCKER_IMAGE_NAME }}:latest \
+              -B paketobuildpacks/ubuntu-noble-builder-buildpackless \
+              -b docker.io/paketobuildpacks/nodejs \
+              --publish
